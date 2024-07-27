@@ -25,18 +25,35 @@ struct LexerToken {
   char *string;
   enum LexerTokenType type;
   size_t start;
-  size_t end;
+  size_t len;
 };
 
 struct Lexer {
   const char *string;
-  const char *pos; // pointing to the last read position
+  size_t cursor;
   int eof;
 };
 
+// initialize the `Lexer` struct
 void lexer_init(struct Lexer *, const char *);
+
+// initialize the `LexerToken` struct
 void lexer_token_init(struct LexerToken *);
+
+// gets the next token from the lexer and corrects the
+// provided `LexerToken` with the information, if no token is parsed `0`
+// is returned, otherwise '1'
 int lexer_next_token(struct Lexer *, struct LexerToken *);
+
+// converts `LexerTokenType` enum to string value
 const char *lexer_token_type_to_string(enum LexerTokenType);
+
+// returns the `LexerToken` string value based on the information
+// found on the lexer, the returned char pointer points to a shared heap data
+// that changes with each function call
+const char *lexer_token_position_string(struct Lexer *, struct LexerToken *);
+
+// like `lexer_token_position_string` but takes a buffer
+void lexer_token_position_string_r(struct Lexer *, struct LexerToken *, char *);
 
 #endif

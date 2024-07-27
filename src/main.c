@@ -1,5 +1,6 @@
 #include <alloca.h>
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <stdarg.h>
@@ -13,7 +14,8 @@
 #include "dll.h"
 #include "lexer.h"
 
-const char *project_path = "../tmux";
+const char *project_path = "./src";
+const char *doc_output = "./docs";
 
 void fatal(const char *fmt, ...) {
   va_list va;
@@ -23,7 +25,7 @@ void fatal(const char *fmt, ...) {
   exit(-1);
 }
 
-struct Lexer *get_file_lexer(const char *path) {
+struct Lexer *get_lexer_for_file(const char *path) {
   struct Lexer *lxr = malloc(sizeof(struct Lexer));
   struct stat sb;
   int fd;
@@ -37,21 +39,29 @@ struct Lexer *get_file_lexer(const char *path) {
   }
 
   const char *content = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-  lexer_init(lxr, content);
   close(fd);
 
+  lexer_init(lxr, content);
   return lxr;
 }
 
-void document_project_files(const char **paths) {
+void document_project_files(const char **paths, const char *output) {
+  errno = 0;
+  if (mkdir(output, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH) != 0) {
+    if (errno != EEXIST) {
+      fatal("couldn't create output folder name `%s`\n", output);
+    }
+  }
+
   for (const char **path = paths; *path != NULL; path++) {
-    struct Lexer *lxr = get_file_lexer(*path);
+    struct Lexer *lxr = get_lexer_for_file(*path);
     struct LexerToken tkn;
 
     lexer_token_init(&tkn);
 
-    while (lexer_next_token(lxr, &tkn) == 0) {
-      printf("(%s) %s\n", lexer_token_type_to_string(tkn.type), tkn.string);
+    while (lexer_next_token(lxr, &tkn)) {
+      const char *string = lexer_token_position_string(lxr, &tkn);
+      printf("(%s) %s\n", lexer_token_type_to_string(tkn.type), string);
     }
   }
 }
@@ -74,7 +84,7 @@ void discover_project_files(const char *basedir, char ***buffer) {
     const char *path = (char *)current->value;
 
     if (stat(path, &stat_buffer) == -1) {
-      fatal("");
+      fatal("couldn't get file stat `%s`\n", path);
     }
 
     switch (stat_buffer.st_mode & S_IFMT) {
@@ -89,7 +99,7 @@ void discover_project_files(const char *basedir, char ***buffer) {
       struct dirent *entry = NULL;
 
       if ((dir = opendir(path)) == NULL) {
-        fatal("");
+        fatal("couldn't open directory at %s\n", path);
       }
 
       while ((entry = readdir(dir)) != NULL) {
@@ -126,5 +136,5 @@ void discover_project_files(const char *basedir, char ***buffer) {
 int main(int argc, char **argv) {
   char **paths = NULL;
   discover_project_files(project_path, &paths);
-  document_project_files((const char **)paths);
+  document_project_files((const char **)paths, doc_output);
 }
