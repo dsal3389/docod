@@ -58,10 +58,9 @@ void document_project_files(const char **paths, const char *output) {
     struct LexerToken tkn;
 
     lexer_token_init(&tkn);
-
     while (lexer_next_token(lxr, &tkn)) {
-      const char *string = lexer_token_position_string(lxr, &tkn);
-      printf("(%s) %s\n", lexer_token_type_to_string(tkn.type), string);
+      printf("token (%s) %s\n", lexer_token_type_to_string(tkn.type),
+             lexer_token_position_string(lxr, &tkn));
     }
   }
 }

@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,8 +14,18 @@
   } while (0);
 
 static char *token_string_buffer = NULL;
+static char *c_keywords[] = {
+    "const",    "void",   "char",     "int",    "long",   "short",
+    "struct",   "if",     "else",     "do",     "while",  "for",
+    "continue", "break",  "return",   "float",  "double", "typedef",
+    "typeof",   "signed", "unsigned", "switch", "case",   "default",
+    "sizeof",   "goto",   "enum",     "union",  "inline", "register",
+    "restrict", NULL};
 
-static char *lxr__tokn_cpy_string(char *, const char *, size_t);
+static int lexer_name_is_keyword(const char *);
+static inline const char *lexer_get_at_position(struct Lexer *, size_t, size_t);
+static inline const char *lexer_get_at_position_r(struct Lexer *, size_t,
+                                                  size_t, char *);
 
 void lexer_init(struct Lexer *lxr, const char *string) {
   lxr->string = string;
@@ -34,6 +45,7 @@ void lexer_token_init(struct LexerToken *tkn) {
 
 const char *lexer_token_type_to_string(enum LexerTokenType type) {
   switch (type) {
+    __LEXER_TYPE_TO_STRING(TKN_KEYWORD)
     __LEXER_TYPE_TO_STRING(TKN_NAME)
     __LEXER_TYPE_TO_STRING(TKN_STRING)
     __LEXER_TYPE_TO_STRING(TKN_NUMBER)
@@ -51,7 +63,6 @@ const char *lexer_token_type_to_string(enum LexerTokenType type) {
     __LEXER_TYPE_TO_STRING(TKN_UNKNOWN)
   }
 }
-
 int lexer_next_token(struct Lexer *lxr, struct LexerToken *tkn) {
   if (lxr->eof) {
     return 0;
@@ -181,7 +192,14 @@ LEXER_CHAR_START:
       len++;
       c++;
     } while (*c && (isalpha(*c) || *c == '_' || *c == '/'));
-    __LEXER_SET_TOKEN(tkn, TKN_NAME, start, len);
+
+    char *name = lexer_get_at_position(lxr, start, len);
+
+    if (lexer_name_is_keyword(name)) {
+      __LEXER_SET_TOKEN(tkn, TKN_KEYWORD, start, len);
+    } else {
+      __LEXER_SET_TOKEN(tkn, TKN_NAME, start, len);
+    }
     break;
   case '0' ... '9':
     do {
@@ -201,22 +219,34 @@ LEXER_CHAR_START:
 
 const char *lexer_token_position_string(struct Lexer *lxr,
                                         struct LexerToken *tkn) {
-  token_string_buffer = realloc(token_string_buffer, tkn->len + 1);
-  lexer_token_position_string_r(lxr, tkn, token_string_buffer);
-  return token_string_buffer;
+  return lexer_get_at_position(lxr, tkn->start, tkn->len);
 }
 
-void lexer_token_position_string_r(struct Lexer *lxr, struct LexerToken *tkn,
-                                   char *buffer) {
-  strncpy(buffer, &(lxr->string[tkn->start]), tkn->len);
-  buffer[tkn->len] = 0;
+const char *lexer_token_position_string_r(struct Lexer *lxr,
+                                          struct LexerToken *tkn,
+                                          char *buffer) {
+  return lexer_get_at_position_r(lxr, tkn->start, tkn->len, buffer);
 }
 
-static char *lxr__tokn_cpy_string(char *buffer, const char *string,
-                                  size_t length) {
-  char *string_buffer = realloc(buffer, length + 1);
-  string_buffer[length] = 0;
+static inline const char *lexer_get_at_position(struct Lexer *lxr, size_t start,
+                                                size_t len) {
+  token_string_buffer = realloc(token_string_buffer, len + 1);
+  return lexer_get_at_position_r(lxr, start, len, token_string_buffer);
+}
 
-  strncpy(string_buffer, string, length);
-  return string_buffer;
+static inline const char *lexer_get_at_position_r(struct Lexer *lxr,
+                                                  size_t start, size_t len,
+                                                  char *buffer) {
+  strncpy(buffer, &(lxr->string[start]), len);
+  buffer[len] = 0;
+  return buffer;
+}
+
+static int lexer_name_is_keyword(const char *name) {
+  for (char **keyword = c_keywords; *keyword; keyword++) {
+    if (strcmp(name, *keyword) == 0) {
+      return 1;
+    }
+  }
+  return 0;
 }

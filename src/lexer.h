@@ -7,6 +7,7 @@ enum LexerTokenType {
   TKN_NAME,
   TKN_NUMBER,
   TKN_STRING,
+  TKN_KEYWORD,
   TKN_COMMENT_ONENLINE,
   TKN_COMMENT_MULTILINE,
   TKN_COMMENT_DOCUMENTATION,
@@ -54,6 +55,7 @@ const char *lexer_token_type_to_string(enum LexerTokenType);
 const char *lexer_token_position_string(struct Lexer *, struct LexerToken *);
 
 // like `lexer_token_position_string` but takes a buffer
-void lexer_token_position_string_r(struct Lexer *, struct LexerToken *, char *);
+const char *lexer_token_position_string_r(struct Lexer *, struct LexerToken *,
+                                          char *);
 
 #endif
