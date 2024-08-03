@@ -11,39 +11,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "dll.h"
 #include "lexer.h"
 
 const char *project_path = "./src";
 const char *doc_output = "./docs";
-
-void fatal(const char *fmt, ...) {
-  va_list va;
-  va_start(va, fmt);
-  vfprintf(stderr, fmt, va);
-  va_end(va);
-  exit(-1);
-}
-
-struct Lexer *get_lexer_for_file(const char *path) {
-  struct Lexer *lxr = malloc(sizeof(struct Lexer));
-  struct stat sb;
-  int fd;
-
-  if (stat(path, &sb) != 0) {
-    fatal("couldn't get file stat for `%s`\n", path);
-  }
-
-  if ((fd = open(path, O_RDONLY)) == -1) {
-    fatal("couldn't open project file at `%s`\n", path);
-  }
-
-  const char *content = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-  close(fd);
-
-  lexer_init(lxr, content);
-  return lxr;
-}
 
 void document_project_files(const char **paths, const char *output) {
   errno = 0;
@@ -54,13 +27,15 @@ void document_project_files(const char **paths, const char *output) {
   }
 
   for (const char **path = paths; *path != NULL; path++) {
-    struct Lexer *lxr = get_lexer_for_file(*path);
+    struct Lexer lxr;
     struct LexerToken tkn;
 
     lexer_token_init(&tkn);
-    while (lexer_next_token(lxr, &tkn)) {
+    lexer_file_content(&lxr, *path);
+
+    while (lexer_next_token(&lxr, &tkn)) {
       printf("token (%s) %s\n", lexer_token_type_to_string(tkn.type),
-             lexer_token_position_string(lxr, &tkn));
+             lexer_token_position_string(&lxr, &tkn));
     }
   }
 }
@@ -70,11 +45,19 @@ void discover_project_files(const char *basedir, char ***buffer) {
   struct DoubleLinkedList files;
   struct Node *current = NULL;
   struct stat stat_buffer;
+  char *entry_path = NULL;
 
   struct Node tmp;
   dll_init(&stack);
   dll_init(&files);
-  dll_node_init(&tmp, (void *)basedir);
+
+  // code assume all values on the `stack`
+  // are heap allocated, and it calls free on them
+  // so we need to move the value to the stack
+  entry_path = malloc(sizeof(char) * PATH_MAX);
+  strcpy(entry_path, basedir);
+
+  dll_node_init(&tmp, entry_path);
   dll_push(&stack, &tmp);
 
   // iterate over folders, if we find files we
@@ -107,13 +90,15 @@ void discover_project_files(const char *basedir, char ***buffer) {
           continue;
         }
 
-        char *entry_path = calloc(sizeof(char), PATH_MAX);
+        entry_path = malloc(sizeof(char) * PATH_MAX);
         snprintf(entry_path, PATH_MAX, "%s/%s", path, entry->d_name);
 
         struct Node *node = alloca(sizeof(struct Node));
         dll_node_init(node, entry_path);
         dll_push(&stack, node);
       }
+
+      free((void *)path);
       closedir(dir);
       break;
     default:

@@ -1,8 +1,12 @@
 #include <ctype.h>
-#include <stdio.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
+#include "common.h"
 #include "lexer.h"
 
 // a macro to easily set token information
@@ -37,6 +41,23 @@ void lexer_token_init(struct LexerToken *tkn) {
   tkn->type = TKN_UNKNOWN;
   tkn->start = 0;
   tkn->len = 0;
+}
+
+void lexer_file_content(struct Lexer *lxr, const char *path) {
+  struct stat sb;
+  int fd;
+
+  if (stat(path, &sb) != 0) {
+    fatal("couldn't get file stat for `%s`\n", path);
+  }
+
+  if ((fd = open(path, O_RDONLY)) == -1) {
+    fatal("couldn't open project file at `%s`\n", path);
+  }
+
+  const char *content = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+  close(fd);
+  lexer_init(lxr, content);
 }
 
 #define __LEXER_TYPE_TO_STRING(t)                                              \

@@ -14,33 +14,33 @@ void dll_node_init(struct Node *node, void *value) {
   node->value = value;
 }
 
-void dll_push(struct DoubleLinkedList *dls, struct Node *node) {
+void dll_push(struct DoubleLinkedList *dll, struct Node *node) {
   node->next = NULL;
-  node->prev = dls->tail;
+  node->prev = dll->tail;
 
   // if we don't have `head` we also don't have tail
-  if (dls->tail == NULL) {
-    dls->head = node;
+  if (dll->tail == NULL) {
+    dll->head = node;
   } else {
-    dls->tail->next = node;
+    dll->tail->next = node;
   }
-  dls->tail = node;
-  dls->length++;
+  dll->tail = node;
+  dll->length++;
 }
 
-struct Node *dll_pop(struct DoubleLinkedList *dls) {
-  if (dls->tail == NULL) {
+struct Node *dll_pop(struct DoubleLinkedList *dll) {
+  if (dll->tail == NULL) {
     return NULL;
   }
-  if (dls->head == dls->tail) {
-    dls->head = NULL;
+  if (dll->head == dll->tail) {
+    dll->head = NULL;
   }
 
-  struct Node *node = dls->tail;
-  dls->tail = node->prev;
+  struct Node *node = dll->tail;
+  dll->tail = node->prev;
 
-  if (dls->tail != NULL) {
-    dls->tail->next = NULL;
+  if (dll->tail != NULL) {
+    dll->tail->next = NULL;
   }
   return node;
 }

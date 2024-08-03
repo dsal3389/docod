@@ -41,6 +41,9 @@ void lexer_init(struct Lexer *, const char *);
 // initialize the `LexerToken` struct
 void lexer_token_init(struct LexerToken *);
 
+// initilize a lexer with the given file content
+void lexer_file_content(struct Lexer *, const char *);
+
 // gets the next token from the lexer and corrects the
 // provided `LexerToken` with the information, if no token is parsed `0`
 // is returned, otherwise '1'

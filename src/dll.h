@@ -15,9 +15,18 @@ struct DoubleLinkedList {
   size_t length;
 };
 
+// initilize double linked list struct
 void dll_init(struct DoubleLinkedList *);
+
+// initilize double linked list node
 void dll_node_init(struct Node *, void *);
+
+// pop item from given double linked list and returns
+// to the caller, if list is empty, returns NULL
 struct Node *dll_pop(struct DoubleLinkedList *);
+
+// push given node to the list, if the node was allocated on the
+// heap, it is the caller responsibility to free it
 void dll_push(struct DoubleLinkedList *, struct Node *);
 
 #endif
